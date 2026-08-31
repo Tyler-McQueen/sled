@@ -111,25 +111,43 @@ func _process_riding(_delta: float) -> void:
 		_hop_cooldown = 0.45
 
 	if Input.is_action_just_pressed(_action_grab) and _grab_cooldown <= 0.0:
-		dismount()
+		var other := _nearest_rideable(rideable)
+		if other != null:
+			mount(other)
+		else:
+			dismount()
 
 
 func _try_mount() -> void:
-	var best: Rideable = null
-	var best_d := 999.0
-	for body in _grab_area.get_overlapping_bodies():
-		if body is Rideable:
-			var d: float = global_position.distance_to(body.global_position)
-			if d < best_d:
-				best_d = d
-				best = body
+	var best := _nearest_rideable(null)
 	if best != null:
 		mount(best)
 
 
+func _nearest_rideable(exclude: Rideable) -> Rideable:
+	var best: Rideable = null
+	var best_d := 999.0
+	for body in _grab_area.get_overlapping_bodies():
+		if body is Rideable and body != exclude:
+			var d: float = global_position.distance_to(body.global_position)
+			if d < best_d:
+				best_d = d
+				best = body
+	return best
+
+
 func mount(r: Rideable) -> void:
-	if rideable != null:
+	if r == null or rideable == r:
 		return
+	# Leap off whatever we're on first.
+	if rideable != null:
+		dismount()
+	# At capacity: steal, dump everyone already on it.
+	if r.riders.size() >= r.max_riders():
+		var victims: Array = r.riders.duplicate()
+		for p in victims:
+			if p != self and p.has_method("dismount"):
+				p.dismount()
 	rideable = r
 	r.add_rider(self)
 	collision_layer = 0

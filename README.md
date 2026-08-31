@@ -23,7 +23,7 @@ The main scene is `scenes/main.tscn`. No extra assets or downloads.
 
 P1 also uses gamepad 1, P2 uses gamepad 2. Plug in extra pads for P3 and P4.
 
-Walk around the summit, get close to something, **Grab** to attach, then steer it off the lip. You stay stuck to whatever you grabbed (no ragdoll) — fridge tumble included. Press Grab again to hop off. Jump while riding pops the object up a bit.
+Walk around the summit, get close to something, **Grab** to attach, then steer it off the lip. You stay stuck to whatever you grabbed (no ragdoll) — fridge tumble included. Press Grab again to hop off, or Grab another ride in range to steal it. The fridge holds two; everything else is a steal. Jump while riding pops the object up a bit.
 
 ## First playable
 

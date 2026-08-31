@@ -15,7 +15,7 @@ radius = 0.22
 height = 0.44
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_grab"]
-radius = 1.7
+radius = 2.5
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 4

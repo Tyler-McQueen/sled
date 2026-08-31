@@ -67,6 +67,12 @@ func setup(p_kind: Kind) -> void:
 	_add_label()
 
 
+func max_riders() -> int:
+	if kind == Kind.FRIDGE:
+		return 2
+	return 1
+
+
 func add_rider(player: Player) -> void:
 	if not riders.has(player):
 		riders.append(player)
