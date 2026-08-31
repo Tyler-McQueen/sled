@@ -28,7 +28,7 @@ Walk around the summit, get close to something, **Grab** to attach, then steer i
 ## First playable
 
 - One mountain slope (CSG + collider slabs), a mogul and a jump
-- Four rideables with different mass / bounce / shape: **Sled**, **Fridge**, **Inner Tube**, **Mattress**
+- Four rideables that actually feel different: **Sled** steers, **Fridge** is heavy and goes straight, **Inner Tube** spins, **Mattress** flops
 - Shared follow camera
 - Finish volume at the bottom; places show on screen
 - Physics is supposed to be chaotic and a little stupid

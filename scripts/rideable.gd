@@ -26,43 +26,43 @@ func setup(p_kind: Kind) -> void:
 	match kind:
 		Kind.SLED:
 			display_name = "the Sled"
-			mass = 10.0
-			steer_force = 95.0
+			mass = 9.0
+			steer_force = 140.0
 			hop_impulse = 6.5
 			seat_offset = Vector3(0, 0.42, 0.1)
-			linear_damp = 0.04
-			angular_damp = 1.4
-			physics_material_override = _mat(0.10, 0.12)
+			linear_damp = 0.02
+			angular_damp = 0.85
+			physics_material_override = _mat(0.04, 0.08)
 			_build_sled()
 		Kind.FRIDGE:
 			display_name = "the Fridge"
-			mass = 48.0
-			steer_force = 42.0
-			hop_impulse = 3.2
+			mass = 72.0
+			steer_force = 16.0
+			hop_impulse = 2.4
 			seat_offset = Vector3(0, 1.05, 0)
-			linear_damp = 0.08
-			angular_damp = 0.25
-			physics_material_override = _mat(0.38, 0.06)
+			linear_damp = 0.14
+			angular_damp = 2.6
+			physics_material_override = _mat(0.62, 0.02)
 			_build_fridge()
 		Kind.TUBE:
 			display_name = "the Inner Tube"
-			mass = 5.5
-			steer_force = 70.0
-			hop_impulse = 8.5
+			mass = 4.5
+			steer_force = 95.0
+			hop_impulse = 9.0
 			seat_offset = Vector3(0, 0.55, 0)
-			linear_damp = 0.02
-			angular_damp = 0.12
-			physics_material_override = _mat(0.06, 0.78)
+			linear_damp = 0.01
+			angular_damp = 0.04
+			physics_material_override = _mat(0.04, 0.86)
 			_build_tube()
 		Kind.MATTRESS:
 			display_name = "the Mattress"
-			mass = 16.0
-			steer_force = 78.0
-			hop_impulse = 5.0
+			mass = 14.0
+			steer_force = 120.0
+			hop_impulse = 4.5
 			seat_offset = Vector3(0, 0.32, 0)
-			linear_damp = 0.06
-			angular_damp = 0.9
-			physics_material_override = _mat(0.22, 0.38)
+			linear_damp = 0.04
+			angular_damp = 0.12
+			physics_material_override = _mat(0.16, 0.44)
 			_build_mattress()
 	_add_label()
 
@@ -87,16 +87,64 @@ func seat_for(player: Player) -> Vector3:
 
 
 func apply_steer(dir: Vector3, _player_index: int) -> void:
-	if dir.length_squared() < 0.01:
+	var planar := Vector3(dir.x, 0.0, dir.z)
+	if planar.length_squared() < 0.01:
 		return
-	var force := Vector3(dir.x, 0.0, dir.z) * steer_force
-	apply_central_force(force)
-	apply_torque(Vector3(0.0, -dir.x * steer_force * 0.12, 0.0))
+	planar = planar.normalized()
+	match kind:
+		Kind.SLED:
+			# Actually steers: yaw the runners, push along them.
+			apply_torque(Vector3(0.0, -planar.x * steer_force * 0.55, 0.0))
+			var forward := -global_transform.basis.z
+			forward.y = 0.0
+			if forward.length_squared() > 0.001:
+				forward = forward.normalized()
+			apply_central_force(forward * steer_force + planar * (steer_force * 0.12))
+		Kind.FRIDGE:
+			# Heavy and straight. Almost no yaw, just a stubborn shove.
+			apply_central_force(planar * steer_force)
+			apply_torque(Vector3(planar.z * 6.0, 0.0, -planar.x * 6.0))
+		Kind.TUBE:
+			# Input becomes spin.
+			apply_torque(Vector3(planar.z * steer_force, -planar.x * steer_force * 1.6, -planar.x * steer_force * 0.55))
+			apply_central_force(planar * (steer_force * 0.22))
+		Kind.MATTRESS:
+			# Flops. Pitch and roll, not a vehicle.
+			apply_torque(Vector3(planar.z * steer_force, -planar.x * steer_force * 0.12, -planar.x * steer_force))
+			apply_central_force(planar * (steer_force * 0.32))
 
 
 func hop() -> void:
-	apply_central_impulse(Vector3.UP * hop_impulse * maxf(mass * 0.25, 4.0))
-	apply_torque_impulse(Vector3(randf_range(-1.5, 1.5), 0.0, randf_range(-1.0, 1.0)))
+	match kind:
+		Kind.FRIDGE:
+			apply_central_impulse(Vector3.UP * hop_impulse * 8.0)
+		Kind.TUBE:
+			apply_central_impulse(Vector3.UP * hop_impulse * maxf(mass * 0.25, 4.0))
+			apply_torque_impulse(Vector3(randf_range(-4.0, 4.0), randf_range(-6.0, 6.0), randf_range(-4.0, 4.0)))
+		Kind.MATTRESS:
+			apply_central_impulse(Vector3.UP * hop_impulse * maxf(mass * 0.2, 3.0))
+			apply_torque_impulse(Vector3(randf_range(-3.5, 3.5), 0.0, randf_range(-5.0, 5.0)))
+		_:
+			apply_central_impulse(Vector3.UP * hop_impulse * maxf(mass * 0.25, 4.0))
+			apply_torque_impulse(Vector3(randf_range(-0.8, 0.8), 0.0, randf_range(-0.6, 0.6)))
+
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	match kind:
+		Kind.FRIDGE:
+			var av := state.angular_velocity
+			av.y *= 0.12
+			state.angular_velocity = av
+		Kind.SLED:
+			var up := global_transform.basis.y
+			var straighten := up.cross(Vector3.UP) * 22.0
+			state.angular_velocity += straighten * state.step
+		Kind.TUBE:
+			var speed := state.linear_velocity.length()
+			if speed > 2.0:
+				state.angular_velocity.y += speed * 0.35 * state.step
+		Kind.MATTRESS:
+			pass
 
 
 func _mat(friction: float, bounce: float) -> PhysicsMaterial:
