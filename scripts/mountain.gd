@@ -54,14 +54,12 @@ func surface_y(z: float) -> float:
 
 func _build() -> void:
 	var snow := _albedo(Color(0.93, 0.96, 0.99), 0.92)
-	var ice := _albedo(Color(0.72, 0.88, 0.96), 0.28)
-	ice.metallic = 0.08
 	var rock := _albedo(Color(0.45, 0.48, 0.52), 0.85)
 	var pine := _albedo(Color(0.12, 0.32, 0.18), 0.9)
 	var trunk := _albedo(Color(0.38, 0.24, 0.14), 0.9)
 	var flag_red := _albedo(Color(0.85, 0.15, 0.12), 0.6)
 
-	_build_visual_volume(snow, ice)
+	_build_visual_volume(snow)
 	_build_collision()
 	_build_walls(rock)
 	_build_trees(pine, trunk)
@@ -76,7 +74,7 @@ func _albedo(color: Color, roughness: float) -> StandardMaterial3D:
 	return m
 
 
-func _build_visual_volume(snow: Material, ice: Material) -> void:
+func _build_visual_volume(snow: Material) -> void:
 	var poly := CSGPolygon3D.new()
 	poly.name = "SnowVolume"
 	var pts := PackedVector2Array()
@@ -155,7 +153,8 @@ func _add_slab(body: StaticBody3D, a: Vector2, b: Vector2, width: float, thick: 
 
 
 func _build_walls(rock: Material) -> void:
-	for side in [-1.0, 1.0]:
+	for side_i in range(2):
+		var side := -1.0 if side_i == 0 else 1.0
 		var x := side * (TRACK_HALF + 0.7)
 		for i in range(profile.size() - 1):
 			var a := profile[i]
@@ -223,7 +222,8 @@ func _pine(pos: Vector3, height: float, pine: Material, trunk: Material) -> void
 func _build_finish_gate(flag: Material) -> void:
 	var z := 214.0
 	var y := 2.0
-	for side in [-1.0, 1.0]:
+	for side_i in range(2):
+		var side := -1.0 if side_i == 0 else 1.0
 		var pole := CSGCylinder3D.new()
 		pole.radius = 0.18
 		pole.height = 8.0

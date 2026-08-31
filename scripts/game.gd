@@ -89,7 +89,7 @@ func _spawn_players() -> void:
 	root.name = "Players"
 	add_child(root)
 	var packed := load("res://scenes/player.tscn") as PackedScene
-	var xs := [-6.0, -2.0, 2.0, 6.0]
+	var xs: Array[float] = [-6.0, -2.0, 2.0, 6.0]
 	var cam_targets: Array = []
 	for i in 4:
 		var p: Player = packed.instantiate()
@@ -106,13 +106,13 @@ func _spawn_rideables() -> void:
 	var root := Node3D.new()
 	root.name = "Rideables"
 	add_child(root)
-	var kinds: Array = [
+	var kinds: Array[int] = [
 		Rideable.Kind.SLED,
 		Rideable.Kind.FRIDGE,
 		Rideable.Kind.TUBE,
 		Rideable.Kind.MATTRESS,
 	]
-	var xs := [-7.5, -2.5, 2.5, 7.5]
+	var xs: Array[float] = [-7.5, -2.5, 2.5, 7.5]
 	for i in kinds.size():
 		var r := Rideable.make(kinds[i])
 		r.name = ["Sled", "Fridge", "InnerTube", "Mattress"][i]
