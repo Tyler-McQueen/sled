@@ -1,0 +1,20 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
+[ext_resource type="Script" path="res://scripts/follow_camera.gd" id="2_cam"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="3_hud"]
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_game")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.86, 0.51, 0, -0.51, 0.86, 0, 74, -40)
+current = true
+fov = 72.0
+near = 0.15
+far = 600.0
+script = ExtResource("2_cam")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+layer = 10
+script = ExtResource("3_hud")
