@@ -21,6 +21,11 @@ var _action_up: String
 var _action_down: String
 var _action_grab: String
 var _action_jump: String
+var _net_axis := Vector2.ZERO
+var _net_grab := false
+var _net_jump := false
+var _sync_acc := 0
+var yell_from: Dictionary = {}
 
 @onready var _hat: MeshInstance3D = $Hat
 @onready var _body: MeshInstance3D = $Body
@@ -31,15 +36,59 @@ var _action_jump: String
 func _ready() -> void:
 	InputSetup.ensure()
 	add_to_group("players")
-	_action_left = "p%d_left" % player_index
-	_action_right = "p%d_right" % player_index
-	_action_up = "p%d_up" % player_index
-	_action_down = "p%d_down" % player_index
-	_action_grab = "p%d_grab" % player_index
-	_action_jump = "p%d_jump" % player_index
+	_bind_actions()
 	display_name = "P%d" % (player_index + 1)
 	_name_tag.text = display_name
 	_apply_colors()
+	set_multiplayer_authority(1)
+
+
+func _bind_actions() -> void:
+	var idx := 0 if Net.active else player_index
+	_action_left = "p%d_left" % idx
+	_action_right = "p%d_right" % idx
+	_action_up = "p%d_up" % idx
+	_action_down = "p%d_down" % idx
+	_action_grab = "p%d_grab" % idx
+	_action_jump = "p%d_jump" % idx
+
+
+func apply_net_occupancy() -> void:
+	_bind_actions()
+	var occ := Net.slot_occupied(player_index)
+	visible = occ
+	_name_tag.visible = occ
+	if not occ:
+		rideable = null
+		collision_layer = 0
+		collision_mask = 0
+
+
+func _owns() -> bool:
+	if not Net.active:
+		return true
+	return Net.peer_for_slot(player_index) == multiplayer.get_unique_id()
+
+
+func _simulate() -> bool:
+	if not Net.active:
+		return true
+	return multiplayer.is_server()
+
+
+func is_hearing_yell(from_idx: int) -> bool:
+	return yell_from.has(from_idx) and float(yell_from[from_idx]) > 0.0
+
+
+func hear_yell(from_idx: int) -> void:
+	yell_from[from_idx] = 2.5
+	if Net.active and multiplayer.is_server():
+		rpc("_cl_yell", from_idx, 2.5)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _cl_yell(from_idx: int, t: float) -> void:
+	yell_from[from_idx] = t
 
 
 func _apply_colors() -> void:
@@ -57,12 +106,127 @@ func _apply_colors() -> void:
 func _physics_process(delta: float) -> void:
 	_grab_cooldown = maxf(0.0, _grab_cooldown - delta)
 	_hop_cooldown = maxf(0.0, _hop_cooldown - delta)
+	var yell_keys: Array = yell_from.keys()
+	for k in yell_keys:
+		yell_from[k] = float(yell_from[k]) - delta
+		if float(yell_from[k]) <= 0.0:
+			yell_from.erase(k)
+
+	if Net.active and not Net.slot_occupied(player_index):
+		visible = false
+		return
+	visible = true
+
+	if Net.active and _owns() and not multiplayer.is_server():
+		rpc_id(1, "sv_input", _read_axis())
+		if Input.is_action_just_pressed(_action_grab):
+			rpc_id(1, "sv_grab")
+		if Input.is_action_just_pressed(_action_jump):
+			rpc_id(1, "sv_jump")
+
+	if not _simulate():
+		if rideable != null and is_instance_valid(rideable):
+			global_position = rideable.to_global(rideable.seat_for(self))
+			global_rotation = Vector3.ZERO
+		return
 
 	if rideable != null:
 		_process_riding(delta)
-		return
+	else:
+		_process_walking(delta)
 
-	_process_walking(delta)
+	if Net.active and multiplayer.is_server():
+		_sync_acc += 1
+		if _sync_acc >= 2:
+			_sync_acc = 0
+			var ride_name := ""
+			if rideable != null and is_instance_valid(rideable):
+				ride_name = rideable.name
+			rpc("cl_state", global_position, velocity, global_rotation, ride_name)
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func sv_input(axis: Vector2) -> void:
+	if not multiplayer.is_server():
+		return
+	if Net.peer_for_slot(player_index) != multiplayer.get_remote_sender_id():
+		return
+	_net_axis = axis
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_grab() -> void:
+	if not multiplayer.is_server():
+		return
+	if Net.peer_for_slot(player_index) != multiplayer.get_remote_sender_id():
+		return
+	_net_grab = true
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_jump() -> void:
+	if not multiplayer.is_server():
+		return
+	if Net.peer_for_slot(player_index) != multiplayer.get_remote_sender_id():
+		return
+	_net_jump = true
+
+
+@rpc("authority", "call_remote", "unreliable")
+func cl_state(pos: Vector3, vel: Vector3, rot: Vector3, ride_name: String) -> void:
+	if multiplayer.is_server():
+		return
+	velocity = vel
+	global_rotation = rot
+	_apply_ride_from_net(ride_name, pos, vel)
+
+
+func _apply_ride_from_net(ride_name: String, pos: Vector3, vel: Vector3) -> void:
+	if ride_name == "":
+		if rideable != null:
+			rideable.remove_rider(self)
+			rideable = null
+			collision_layer = 4
+			collision_mask = 3
+		global_position = pos
+		velocity = vel
+		return
+	var folder := get_tree().current_scene.get_node_or_null("Rideables")
+	if folder == null:
+		global_position = pos
+		return
+	var r := folder.get_node_or_null(ride_name)
+	if r == null or not (r is Rideable):
+		global_position = pos
+		return
+	var ride: Rideable = r
+	if rideable != ride:
+		if rideable != null:
+			rideable.remove_rider(self)
+		rideable = ride
+		ride.add_rider(self)
+		collision_layer = 0
+		collision_mask = 0
+	global_position = ride.to_global(ride.seat_for(self))
+	global_rotation = Vector3.ZERO
+
+
+func _want_grab() -> bool:
+	if Net.active and multiplayer.is_server() and not _owns():
+		if _net_grab:
+			_net_grab = false
+			return true
+		return false
+	return Input.is_action_just_pressed(_action_grab)
+
+
+func _want_jump() -> bool:
+	if Net.active and multiplayer.is_server() and not _owns():
+		if _net_jump:
+			_net_jump = false
+			return true
+		return false
+	return Input.is_action_just_pressed(_action_jump)
 
 
 func _process_walking(delta: float) -> void:
@@ -83,10 +247,10 @@ func _process_walking(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0.0, speed * delta * 4.0)
 		velocity.z = move_toward(velocity.z, 0.0, speed * delta * 4.0)
 
-	if Input.is_action_just_pressed(_action_jump) and is_on_floor():
+	if _want_jump() and is_on_floor():
 		velocity.y = JUMP_VELOCITY
 
-	if Input.is_action_just_pressed(_action_grab) and _grab_cooldown <= 0.0:
+	if _want_grab() and _grab_cooldown <= 0.0:
 		_try_mount()
 
 	move_and_slide()
@@ -98,19 +262,19 @@ func _process_riding(_delta: float) -> void:
 		_force_dismount()
 		return
 
-	# Stay glued to the seat; the rigidbody does the physics.
-	position = rideable.seat_for(self)
-	rotation = Vector3.ZERO
+	# Stay glued to the seat without reparenting (RPC paths stay under Players/).
+	global_position = rideable.to_global(rideable.seat_for(self))
+	global_rotation = Vector3.ZERO
 
 	var move := _move_axis()
 	var dir := _camera_dir(move)
 	rideable.apply_steer(dir, player_index)
 
-	if Input.is_action_just_pressed(_action_jump) and _hop_cooldown <= 0.0:
+	if _want_jump() and _hop_cooldown <= 0.0:
 		rideable.hop()
 		_hop_cooldown = 0.45
 
-	if Input.is_action_just_pressed(_action_grab) and _grab_cooldown <= 0.0:
+	if _want_grab() and _grab_cooldown <= 0.0:
 		var other := _nearest_rideable(rideable)
 		if other != null:
 			mount(other)
@@ -139,23 +303,22 @@ func _nearest_rideable(exclude: Rideable) -> Rideable:
 func mount(r: Rideable) -> void:
 	if r == null or rideable == r:
 		return
-	# Leap off whatever we're on first.
 	if rideable != null:
 		dismount()
-	# At capacity: steal, dump everyone already on it.
 	if r.riders.size() >= r.max_riders():
 		var victims: Array = r.riders.duplicate()
 		for p in victims:
 			if p != self and p.has_method("dismount"):
+				if p.has_method("hear_yell"):
+					p.hear_yell(player_index)
 				p.dismount()
 	rideable = r
 	r.add_rider(self)
 	collision_layer = 0
 	collision_mask = 0
 	velocity = Vector3.ZERO
-	reparent(r)
-	position = r.seat_for(self)
-	rotation = Vector3.ZERO
+	global_position = r.to_global(r.seat_for(self))
+	global_rotation = Vector3.ZERO
 	_grab_cooldown = 0.35
 
 
@@ -167,10 +330,6 @@ func dismount() -> void:
 	var drop_pos := r.global_position + r.global_transform.basis.x * 1.6 + Vector3.UP * 1.2
 	r.remove_rider(self)
 	rideable = null
-	var world := get_tree().current_scene.get_node_or_null("Players")
-	if world == null:
-		world = get_tree().current_scene
-	reparent(world)
 	global_position = drop_pos
 	global_rotation = Vector3.ZERO
 	collision_layer = 4
@@ -181,10 +340,6 @@ func dismount() -> void:
 
 func _force_dismount() -> void:
 	rideable = null
-	var world := get_tree().current_scene.get_node_or_null("Players")
-	if world == null:
-		world = get_tree().current_scene
-	reparent(world)
 	collision_layer = 4
 	collision_mask = 3
 	_grab_cooldown = 0.4
@@ -199,11 +354,17 @@ func _push_rideables() -> void:
 			rb.apply_central_impulse(-col.get_normal() * PUSH_STRENGTH)
 
 
-func _move_axis() -> Vector2:
+func _read_axis() -> Vector2:
 	return Vector2(
 		Input.get_axis(_action_left, _action_right),
 		Input.get_axis(_action_up, _action_down)
 	)
+
+
+func _move_axis() -> Vector2:
+	if Net.active and multiplayer.is_server() and not _owns():
+		return _net_axis
+	return _read_axis()
 
 
 func _camera_dir(move: Vector2) -> Vector3:

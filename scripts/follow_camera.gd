@@ -29,6 +29,8 @@ func _process(delta: float) -> void:
 	for t in targets:
 		if t == null or not is_instance_valid(t):
 			continue
+		if t is Node3D and not t.visible:
+			continue
 		var p: Vector3 = t.global_position
 		centroid += p
 		n += 1

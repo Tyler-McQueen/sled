@@ -28,12 +28,13 @@ func _ready() -> void:
 	_spawn_rideables()
 	_spawn_players()
 	_spawn_finish()
+	Net.rebind()
 
 
 func _process(delta: float) -> void:
 	_clock += delta
 	if Input.is_action_just_pressed("restart"):
-		get_tree().reload_current_scene()
+		Net.request_restart()
 
 
 func record_finish(player: Player, vehicle: Rideable) -> void:

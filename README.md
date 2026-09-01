@@ -20,6 +20,7 @@ The main scene is `scenes/main.tscn`. No extra assets or downloads.
 | Grab / hop off | E | Enter | A / South button |
 | Jump / hop the ride | Space | Right Shift | B / East button |
 | Restart race | R | R | Start |
+| Host / join | H, then Join (IP box) | | |
 
 P1 also uses gamepad 1, P2 uses gamepad 2. Plug in extra pads for P3 and P4.
 
@@ -33,7 +34,9 @@ Walk around the summit, get close to something, **Grab** to attach, then steer i
 - Finish volume over the lot; places show on screen
 - Physics is supposed to be chaotic and a little stupid
 
-Out of scope on purpose: online multiplayer, menus, real art.
+Online is optional. **H** hosts (port 24567), type an IP and **J** / Join. Four players, one per machine, P1 bindings. Mic is proximity voice: quiet on the same fridge, yelling on a steal, gone if they dump you in the trees. Local 4-player is still the default.
+
+Out of scope on purpose: menus beyond host/join, real art, changing the mountain.
 
 ## Restart
 

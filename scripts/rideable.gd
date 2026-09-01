@@ -426,6 +426,34 @@ func _build_door() -> void:
 	center_of_mass = Vector3(0, 0.04, 0)
 
 
+
+func _ready() -> void:
+	set_multiplayer_authority(1)
+
+
+func _physics_process(_delta: float) -> void:
+	if not Net.active:
+		return
+	if multiplayer.is_server():
+		if Engine.get_physics_frames() % 2 == 0:
+			rpc("_cl_rb", global_position, global_rotation, linear_velocity, angular_velocity)
+	elif not freeze:
+		freeze = true
+		freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+
+
+@rpc("authority", "call_remote", "unreliable")
+func _cl_rb(pos: Vector3, rot: Vector3, lin: Vector3, ang: Vector3) -> void:
+	if multiplayer.is_server():
+		return
+	freeze = true
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	global_position = pos
+	global_rotation = rot
+	linear_velocity = lin
+	angular_velocity = ang
+
+
 static func make(p_kind: Kind) -> Rideable:
 	var packed := load("res://scenes/rideable.tscn") as PackedScene
 	var r: Rideable = packed.instantiate()
