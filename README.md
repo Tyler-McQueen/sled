@@ -2,7 +2,7 @@
 
 We're going down this mountain on whatever we grabbed at the top. That's the game. Slope, friends, bottom.
 
-Godot 4. Local 1–4 players. Grab a sled, a fridge, an inner tube, or a mattress at the summit — then ride it down.
+Godot 4. Local 1–4 players. Grab a sled, a fridge, an inner tube, a mattress, a kayak, a folding table, a kiddie pool, or a door at the summit — then ride it down.
 
 ## How to run
 
@@ -27,10 +27,10 @@ Walk around the summit, get close to something, **Grab** to attach, then steer i
 
 ## First playable
 
-- One mountain slope (CSG + collider slabs), a mogul and a jump
-- Four rideables that actually feel different: **Sled** steers, **Fridge** is heavy and goes straight, **Inner Tube** spins, **Mattress** flops
+- One mountain: trees you can hit, a barn jump, a split into **ice** vs **powder**, finish in a parking lot
+- Eight rideables: sled steers, fridge plows (holds two), tube spins, mattress flops, kayak tracks and tips, folding table catches a leg, kiddie pool sloshes, door wants to go on edge
 - Shared follow camera
-- Finish volume at the bottom; places show on screen
+- Finish volume over the lot; places show on screen
 - Physics is supposed to be chaotic and a little stupid
 
 Out of scope on purpose: online multiplayer, menus, real art.

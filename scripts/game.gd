@@ -111,18 +111,29 @@ func _spawn_rideables() -> void:
 		Rideable.Kind.FRIDGE,
 		Rideable.Kind.TUBE,
 		Rideable.Kind.MATTRESS,
+		Rideable.Kind.KAYAK,
+		Rideable.Kind.TABLE,
+		Rideable.Kind.POOL,
+		Rideable.Kind.DOOR,
 	]
-	var xs: Array[float] = [-7.5, -2.5, 2.5, 7.5]
+	var names: Array[String] = [
+		"Sled", "Fridge", "InnerTube", "Mattress",
+		"Kayak", "FoldingTable", "KiddiePool", "Door",
+	]
+	var xs: Array[float] = [-9.0, -3.0, 3.0, 9.0, -9.0, -3.0, 3.0, 9.0]
+	var zs: Array[float] = [-6.0, -6.0, -6.0, -6.0, 2.5, 2.5, 2.5, 2.5]
 	for i in kinds.size():
 		var r := Rideable.make(kinds[i])
-		r.name = ["Sled", "Fridge", "InnerTube", "Mattress"][i]
+		r.name = names[i]
 		root.add_child(r)
-		var y := 58.4
+		var y := 58.45
 		if kinds[i] == Rideable.Kind.FRIDGE:
 			y = 58.2
-		elif kinds[i] == Rideable.Kind.TUBE:
-			y = 58.85
-		r.global_position = Vector3(xs[i], y, -4.0)
+		elif kinds[i] == Rideable.Kind.TUBE or kinds[i] == Rideable.Kind.POOL:
+			y = 58.9
+		elif kinds[i] == Rideable.Kind.TABLE:
+			y = 58.55
+		r.global_position = Vector3(xs[i], y, zs[i])
 		r.rotation_degrees = Vector3(0, 180, 0)
 
 
@@ -135,10 +146,10 @@ func _spawn_finish() -> void:
 	area.monitorable = false
 	var cs := CollisionShape3D.new()
 	var box := BoxShape3D.new()
-	box.size = Vector3(24.0, 16.0, 8.0)
+	box.size = Vector3(28.0, 16.0, 10.0)
 	cs.shape = box
 	area.add_child(cs)
-	area.position = Vector3(0, 8.0, 214.0)
+	area.position = Vector3(0, 8.0, 218.0)
 	area.body_entered.connect(_on_finish_body)
 	add_child(area)
 
@@ -149,7 +160,7 @@ func _spawn_finish() -> void:
 	var bbox := BoxShape3D.new()
 	bbox.size = Vector3(26, 10, 3)
 	bcs.shape = bbox
-	bcs.position = Vector3(0, 5, 252)
+	bcs.position = Vector3(0, 5, 272)
 	bumper.add_child(bcs)
 	add_child(bumper)
 
